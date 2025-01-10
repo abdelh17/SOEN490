@@ -289,20 +289,28 @@ class ClientControllerIntegrationTest extends AbstractTestcontainers {
     @Test
     void getAllProjectsWhenNoneExistReturnsEmptyList() throws Exception {
         //Act
-        String response = mockMvc.perform(get("/api/client/projects/all").session(session))
+        String response = mockMvc.perform(get("/api/client/projects/all")
+                        .param("page", "0")
+                        .param("size", "10")
+                        .param("sortDirection", "asc")
+                        .session(session))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse().getContentAsString();
 
         //Assert
-        List<Object> responseList = objectMapper.readValue(response, List.class);
-        assertThat(responseList.size()).isEqualTo(0);
+        Map<String, Object> responseMap = objectMapper.readValue(response, Map.class);
+        List<Object> content = (List<Object>) responseMap.get("content");
+
+        assertThat(content.size()).isEqualTo(0);
+        assertThat(responseMap.get("totalElements")).isEqualTo(0);
+        assertThat(responseMap.get("totalPages")).isEqualTo(0);
     }
 
     @Test
     void getAllProjectsWhenExistIsOk() throws Exception {
         //Arrange
-        projectRepository.save(EntityCreationHelper.createProject(ProjectStatus.PENDING, client));
+        Project project1 = projectRepository.save(EntityCreationHelper.createProject(ProjectStatus.PENDING, client));
 
         Project project2 = new Project();
         project2.setTitle("title2");
@@ -315,18 +323,23 @@ class ClientControllerIntegrationTest extends AbstractTestcontainers {
         projectRepository.save(project2);
 
         //Act
-        String response = mockMvc.perform(get("/api/client/projects/all").session(session))
+        String response = mockMvc.perform(get("/api/client/projects/all")
+                        .param("page", "0")
+                        .param("size", "10")
+                        .param("sortDirection", "asc")
+                        .session(session))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse().getContentAsString();
 
-        List<Object> responseList = objectMapper.readValue(response, List.class);
+        Map<String, Object> responseMap = objectMapper.readValue(response, Map.class);
+        List<Map<String, Object>> content = (List<Map<String, Object>>) responseMap.get("content");
 
         //Assert
-        assertThat(responseList.size()).isEqualTo(2);
+        assertThat(content.size()).isEqualTo(2);
 
-        Map<String, Object> projectResponse1 = (Map<String, Object>) responseList.get(0);
-        Map<String, Object> projectResponse2 = (Map<String, Object>) responseList.get(1);
+        Map<String, Object> projectResponse1 = content.get(0);
+        Map<String, Object> projectResponse2 = content.get(1);
 
         assertThat(projectResponse1.get("title")).isEqualTo("title");
         assertThat(projectResponse1.get("description")).isEqualTo("description");
@@ -342,8 +355,12 @@ class ClientControllerIntegrationTest extends AbstractTestcontainers {
         assertThat(projectResponse2.get("experienceLevel")).isEqualTo("JUNIOR");
         assertThat(projectResponse2.get("expectedDeliveryTime")).isEqualTo("FLEXIBLE");
 
+        // Verify pagination information
+        assertThat(responseMap.get("totalElements")).isEqualTo(2);
+        assertThat(responseMap.get("totalPages")).isEqualTo(1);
+        assertThat(responseMap.get("number")).isEqualTo(0);
+        assertThat(responseMap.get("size")).isEqualTo(10);
     }
-
 
     @Test
     void deleteProjectIsOk() throws Exception {
@@ -378,23 +395,30 @@ class ClientControllerIntegrationTest extends AbstractTestcontainers {
     void getAllApplicationsToProjectGivesOk() throws Exception {
         //Arrange
         Project project = projectRepository.save(EntityCreationHelper.createProject(ProjectStatus.PENDING, client));
-
         User freelancer = userRepository.save(EntityCreationHelper.createFreelancer(1));
-
         applicationRepository.save(EntityCreationHelper.createApplication(project, freelancer));
 
         //Act
-        String response = mockMvc.perform(get("/api/client/projects/" + project.getId() + "/applications/all").session(session))
+        String response = mockMvc.perform(get("/api/client/projects/" + project.getId() + "/applications/all")
+                        .param("page", "0")
+                        .param("size", "10")
+                        .param("sortDirection", "asc")
+                        .session(session))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse().getContentAsString();
 
-        List<Object> responseList = objectMapper.readValue(response, List.class);
-        Map<String, Object> applicationReturned = (Map<String, Object>) responseList.get(0);
+        Map<String, Object> responseMap = objectMapper.readValue(response, Map.class);
+        List<Map<String, Object>> content = (List<Map<String, Object>>) responseMap.get("content");
+        Map<String, Object> applicationReturned = content.get(0);
 
         //Assert
         assertThat(applicationReturned.get("projectId")).isEqualTo(project.getId().intValue());
         assertThat(applicationReturned.get("freelancerId")).isEqualTo(freelancer.getId().intValue());
+
+        // Verify pagination information
+        assertThat(responseMap.get("totalElements")).isEqualTo(1);
+        assertThat(responseMap.get("totalPages")).isEqualTo(1);
     }
 
     @Test
@@ -403,17 +427,23 @@ class ClientControllerIntegrationTest extends AbstractTestcontainers {
         Project project = projectRepository.save(EntityCreationHelper.createProject(ProjectStatus.PENDING, client));
 
         //Act
-        String response = mockMvc.perform(get("/api/client/projects/" + project.getId() + "/applications/all").session(session))
+        String response = mockMvc.perform(get("/api/client/projects/" + project.getId() + "/applications/all")
+                        .param("page", "0")
+                        .param("size", "10")
+                        .param("sortDirection", "asc")
+                        .session(session))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse().getContentAsString();
 
-        List<Object> responseList = objectMapper.readValue(response, List.class);
+        Map<String, Object> responseMap = objectMapper.readValue(response, Map.class);
+        List<Object> content = (List<Object>) responseMap.get("content");
 
         //Assert
-        assertThat(responseList.size()).isEqualTo(0);
+        assertThat(content.size()).isEqualTo(0);
+        assertThat(responseMap.get("totalElements")).isEqualTo(0);
+        assertThat(responseMap.get("totalPages")).isEqualTo(0);
     }
-
 
     @Test
     void selectFreelancerChangesApplicationStatusAndProjectStatusIsOk() throws Exception {

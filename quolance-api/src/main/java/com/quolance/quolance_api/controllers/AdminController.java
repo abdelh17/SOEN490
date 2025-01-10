@@ -6,6 +6,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import java.util.List;
 
@@ -19,8 +23,15 @@ public class AdminController {
             summary = "Get all pending projects"
     )
     @GetMapping("projects/pending/all")
-    public ResponseEntity<List<ProjectDto>> getAllPendingProjects() {
-        return ResponseEntity.ok(adminWorkflowService.getAllPendingProjects());
+    public ResponseEntity<Page<ProjectDto>> getAllPendingProjects(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction
+    ) {
+        Sort.Direction sortDirection = Sort.Direction.fromString(direction.toUpperCase());
+        PageRequest pageRequest = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
+        return ResponseEntity.ok(adminWorkflowService.getAllPendingProjects(pageRequest));
     }
 
     @Operation(

@@ -21,6 +21,9 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
 import java.util.Arrays;
@@ -33,7 +36,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class ClientWorkflowServiceTest {
+class ClientWorkflowServiceUnitTest {
 
     @Mock
     private ProjectService projectService;
@@ -171,35 +174,43 @@ class ClientWorkflowServiceTest {
 
     @Test
     void getAllClientProjects_Success() {
-        List<Project> projects = Arrays.asList(mockProject);
-        when(projectService.getProjectsByClientId(mockClient.getId())).thenReturn(projects);
+        Page<Project> projectPage = new PageImpl<>(List.of(mockProject));
+        when(projectService.getProjectsByClientId(eq(mockClient.getId()), any(Pageable.class)))
+                .thenReturn(projectPage);
 
-        List<ProjectDto> result = clientWorkflowService.getAllClientProjects(mockClient);
+        Page<ProjectDto> result = clientWorkflowService.getAllClientProjects(mockClient, Pageable.unpaged());
 
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getId()).isEqualTo(mockProject.getId());
-        assertThat(result.get(0).getTitle()).isEqualTo(mockProject.getTitle());
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getId()).isEqualTo(mockProject.getId());
+        assertThat(result.getContent().get(0).getTitle()).isEqualTo(mockProject.getTitle());
+        verify(projectService).getProjectsByClientId(eq(mockClient.getId()), any(Pageable.class));
     }
 
     @Test
-    void getAllClientProjects_WhenNoProjects_ReturnsEmptyList() {
-        when(projectService.getProjectsByClientId(mockClient.getId())).thenReturn(Collections.emptyList());
+    void getAllClientProjects_WhenNoProjects_ReturnsEmptyPage() {
+        Page<Project> emptyPage = Page.empty();
+        when(projectService.getProjectsByClientId(eq(mockClient.getId()), any(Pageable.class)))
+                .thenReturn(emptyPage);
 
-        List<ProjectDto> result = clientWorkflowService.getAllClientProjects(mockClient);
+        Page<ProjectDto> result = clientWorkflowService.getAllClientProjects(mockClient, Pageable.unpaged());
 
-        assertThat(result).isEmpty();
+        assertThat(result.getContent()).isEmpty();
+        assertThat(result.getTotalElements()).isZero();
+        verify(projectService).getProjectsByClientId(eq(mockClient.getId()), any(Pageable.class));
     }
 
     @Test
     void getAllApplicationsToProject_WhenOwner_Success() {
         when(projectService.getProjectById(1L)).thenReturn(mockProject);
-        when(applicationService.getAllApplicationsByProjectId(1L))
-                .thenReturn(Arrays.asList(mockApplication));
+        Page<Application> applicationPage = new PageImpl<>(List.of(mockApplication));
+        when(applicationService.getAllApplicationsByProjectId(eq(1L), any(Pageable.class)))
+                .thenReturn(applicationPage);
 
-        List<ApplicationDto> result = clientWorkflowService.getAllApplicationsToProject(1L, mockClient);
+        Page<ApplicationDto> result = clientWorkflowService.getAllApplicationsToProject(1L, mockClient, Pageable.unpaged());
 
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getId()).isEqualTo(mockApplication.getId());
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getId()).isEqualTo(mockApplication.getId());
+        verify(applicationService).getAllApplicationsByProjectId(eq(1L), any(Pageable.class));
     }
 
     @Test
@@ -207,7 +218,7 @@ class ClientWorkflowServiceTest {
         User wrongClient = User.builder().id(999L).build();
         when(projectService.getProjectById(1L)).thenReturn(mockProject);
 
-        assertThatThrownBy(() -> clientWorkflowService.getAllApplicationsToProject(1L, wrongClient))
+        assertThatThrownBy(() -> clientWorkflowService.getAllApplicationsToProject(1L, wrongClient, Pageable.unpaged()))
                 .isInstanceOf(ApiException.class)
                 .hasFieldOrPropertyWithValue("status", HttpServletResponse.SC_FORBIDDEN)
                 .hasMessage("You are not authorized to view this project applications");

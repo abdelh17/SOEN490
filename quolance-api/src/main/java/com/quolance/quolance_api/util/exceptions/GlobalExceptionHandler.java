@@ -1,5 +1,6 @@
 package com.quolance.quolance_api.util.exceptions;
 
+import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -70,5 +71,20 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     var response = HttpErrorResponse.of("Unexpected error", 500);
     return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
   }
+
+  @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<HttpErrorResponse> handleException(ConstraintViolationException e) {
+        log.info("Handling ConstraintViolationException: {}", e.getMessage());
+        Map<String, String> errors = new HashMap<>();
+        e.getConstraintViolations().forEach(violation -> {
+        String fieldName = violation.getPropertyPath().toString();
+        String errorMessage = violation.getMessage();
+        errors.put(fieldName, errorMessage);
+        });
+
+        var response = HttpErrorResponse.of("Unprocessable entity", 422, errors, null);
+        return new ResponseEntity<>(response, HttpStatus.UNPROCESSABLE_ENTITY);
+    }
+
 }
 

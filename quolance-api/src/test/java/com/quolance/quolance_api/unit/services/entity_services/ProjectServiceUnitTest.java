@@ -18,6 +18,10 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
 
 import java.time.LocalDate;
 import java.util.Arrays;
@@ -30,7 +34,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class ProjectServiceTest {
+class ProjectServiceUnitTest {
 
     @Mock
     private ProjectRepository projectRepository;
@@ -119,25 +123,121 @@ class ProjectServiceTest {
 
     @Test
     void getProjectsByStatuses_Success() {
-        List<Project> projects = Arrays.asList(mockProject);
+        List<Project> projects = List.of(mockProject);
         List<ProjectStatus> statuses = Arrays.asList(ProjectStatus.PENDING, ProjectStatus.OPEN);
-        when(projectRepository.findProjectsByProjectStatusIn(statuses)).thenReturn(projects);
+        Page<Project> expectedPage = new PageImpl<>(projects);
 
-        List<Project> result = projectService.getProjectsByStatuses(statuses);
+        when(projectRepository.findProjectsByProjectStatusIn(eq(statuses), any(Pageable.class)))
+                .thenReturn(expectedPage);
 
-        assertThat(result).hasSize(1);
-        assertThat(result).containsExactly(mockProject);
+        Page<Project> result = projectService.getProjectsByStatuses(statuses, Pageable.unpaged());
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent()).containsExactly(mockProject);
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        verify(projectRepository).findProjectsByProjectStatusIn(eq(statuses), any(Pageable.class));
+    }
+
+    @Test
+    void getProjectsByStatuses_WithPaging_Success() {
+        Project mockProject2 = Project.builder()
+                .id(2L)
+                .title("Test Project 2")
+                .projectStatus(ProjectStatus.OPEN)
+                .build();
+        Project mockProject3 = Project.builder()
+                .id(3L)
+                .title("Test Project 3")
+                .projectStatus(ProjectStatus.OPEN)
+                .build();
+
+        List<ProjectStatus> statuses = List.of(ProjectStatus.OPEN);
+        List<Project> allProjects = Arrays.asList(mockProject, mockProject2, mockProject3);
+
+        Pageable pageRequest = PageRequest.of(0, 2);
+        Page<Project> expectedPage = new PageImpl<>(
+                allProjects.subList(0, 2),
+                pageRequest,
+                allProjects.size()
+        );
+
+        when(projectRepository.findProjectsByProjectStatusIn(eq(statuses), eq(pageRequest)))
+                .thenReturn(expectedPage);
+
+        Page<Project> result = projectService.getProjectsByStatuses(statuses, pageRequest);
+
+        assertThat(result.getContent()).hasSize(2);
+        assertThat(result.getTotalElements()).isEqualTo(3);
+        assertThat(result.getTotalPages()).isEqualTo(2);
+        assertThat(result.hasNext()).isTrue();
+        verify(projectRepository).findProjectsByProjectStatusIn(eq(statuses), eq(pageRequest));
     }
 
     @Test
     void getProjectsByClientId_Success() {
-        List<Project> projects = Arrays.asList(mockProject);
-        when(projectRepository.findProjectsByClientId(1L)).thenReturn(projects);
+        List<Project> projects = List.of(mockProject);
+        Page<Project> expectedPage = new PageImpl<>(projects);
 
-        List<Project> result = projectService.getProjectsByClientId(1L);
+        when(projectRepository.findProjectsByClientId(eq(1L), any(Pageable.class)))
+                .thenReturn(expectedPage);
 
-        assertThat(result).hasSize(1);
-        assertThat(result).containsExactly(mockProject);
+        Page<Project> result = projectService.getProjectsByClientId(1L, Pageable.unpaged());
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent()).containsExactly(mockProject);
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        verify(projectRepository).findProjectsByClientId(eq(1L), any(Pageable.class));
+    }
+
+    @Test
+    void getProjectsByClientId_WithMultiplePages_Success() {
+        Project mockProject2 = Project.builder()
+                .id(2L)
+                .title("Test Project 2")
+                .build();
+
+        Project mockProject3 = Project.builder()
+                .id(3L)
+                .title("Test Project 3")
+                .build();
+
+        List<Project> allProjects = Arrays.asList(mockProject, mockProject2, mockProject3);
+
+        Pageable firstPageRequest = PageRequest.of(0, 2);
+        Page<Project> firstPage = new PageImpl<>(
+                allProjects.subList(0, 2),
+                firstPageRequest,
+                allProjects.size()
+        );
+
+        when(projectRepository.findProjectsByClientId(eq(1L), eq(firstPageRequest)))
+                .thenReturn(firstPage);
+
+        Page<Project> result = projectService.getProjectsByClientId(1L, firstPageRequest);
+
+        assertThat(result.getContent()).hasSize(2);
+        assertThat(result.getTotalElements()).isEqualTo(3);
+        assertThat(result.getTotalPages()).isEqualTo(2);
+        assertThat(result.hasNext()).isTrue();
+
+        Pageable secondPageRequest = PageRequest.of(1, 2);
+        Page<Project> secondPage = new PageImpl<>(
+                allProjects.subList(2, 3),
+                secondPageRequest,
+                allProjects.size()
+        );
+
+        when(projectRepository.findProjectsByClientId(eq(1L), eq(secondPageRequest)))
+                .thenReturn(secondPage);
+
+        result = projectService.getProjectsByClientId(1L, secondPageRequest);
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getTotalElements()).isEqualTo(3);
+        assertThat(result.getTotalPages()).isEqualTo(2);
+        assertThat(result.hasNext()).isFalse();
+
+        verify(projectRepository, times(2)).findProjectsByClientId(eq(1L), any(Pageable.class));
     }
 
     @Test

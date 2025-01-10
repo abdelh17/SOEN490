@@ -22,6 +22,10 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -34,7 +38,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class FreelancerWorkflowServiceTest {
+class FreelancerWorkflowServiceUnitTest {
 
     @Mock
     private ProjectService projectService;
@@ -155,23 +159,28 @@ class FreelancerWorkflowServiceTest {
 
     @Test
     void getAllFreelancerApplications_Success() {
-        when(applicationService.getAllApplicationsByFreelancerId(1L))
-                .thenReturn(Arrays.asList(mockApplication));
+        Page<Application> applicationPage = new PageImpl<>(List.of(mockApplication));
+        when(applicationService.getAllApplicationsByFreelancerId(eq(1L), any(Pageable.class)))
+                .thenReturn(applicationPage);
 
-        List<ApplicationDto> results = freelancerWorkflowService.getAllFreelancerApplications(mockFreelancer);
+        Page<ApplicationDto> results = freelancerWorkflowService.getAllFreelancerApplications(mockFreelancer, Pageable.unpaged());
 
-        assertThat(results).hasSize(1);
-        assertThat(results.get(0).getId()).isEqualTo(mockApplication.getId());
+        assertThat(results.getContent()).hasSize(1);
+        assertThat(results.getContent().get(0).getId()).isEqualTo(mockApplication.getId());
+        verify(applicationService).getAllApplicationsByFreelancerId(eq(1L), any(Pageable.class));
     }
 
     @Test
-    void getAllFreelancerApplications_NoApplications_ReturnsEmptyList() {
-        when(applicationService.getAllApplicationsByFreelancerId(1L))
-                .thenReturn(Collections.emptyList());
+    void getAllFreelancerApplications_NoApplications_ReturnsEmptyPage() {
+        Page<Application> emptyPage = Page.empty();
+        when(applicationService.getAllApplicationsByFreelancerId(eq(1L), any(Pageable.class)))
+                .thenReturn(emptyPage);
 
-        List<ApplicationDto> results = freelancerWorkflowService.getAllFreelancerApplications(mockFreelancer);
+        Page<ApplicationDto> results = freelancerWorkflowService.getAllFreelancerApplications(mockFreelancer, Pageable.unpaged());
 
-        assertThat(results).isEmpty();
+        assertThat(results.getContent()).isEmpty();
+        assertThat(results.getTotalElements()).isZero();
+        verify(applicationService).getAllApplicationsByFreelancerId(eq(1L), any(Pageable.class));
     }
 
     @Test
@@ -194,19 +203,58 @@ class FreelancerWorkflowServiceTest {
                 .visibilityExpirationDate(LocalDate.now().plusDays(2))
                 .build();
 
-        List<Project> mockProjects = new ArrayList<>();
-        mockProjects.add(activeProject);
-        mockProjects.add(expiredProject);
-        mockProjects.add(closedButVisibleProject);
+        List<Project> mockProjects = Arrays.asList(activeProject, expiredProject, closedButVisibleProject);
+        Page<Project> projectPage = new PageImpl<>(mockProjects);
 
-        when(projectService.getProjectsByStatuses(List.of(ProjectStatus.OPEN, ProjectStatus.CLOSED)))
-                .thenReturn(mockProjects);
+        when(projectService.getProjectsByStatuses(
+                eq(List.of(ProjectStatus.OPEN, ProjectStatus.CLOSED)),
+                any(Pageable.class))
+        ).thenReturn(projectPage);
 
-        List<ProjectPublicDto> results = freelancerWorkflowService.getAllAvailableProjects();
+        Page<ProjectPublicDto> results = freelancerWorkflowService.getAllAvailableProjects(Pageable.unpaged());
 
-        assertThat(results).hasSize(2);
-        assertThat(results.stream().map(ProjectPublicDto::getId))
+        assertThat(results.getContent()).hasSize(2);
+        assertThat(results.getContent().stream().map(ProjectPublicDto::getId))
                 .containsExactlyInAnyOrder(activeProject.getId(), closedButVisibleProject.getId());
+        verify(projectService).getProjectsByStatuses(
+                eq(List.of(ProjectStatus.OPEN, ProjectStatus.CLOSED)),
+                any(Pageable.class)
+        );
+    }
+
+    @Test
+    void getAllAvailableProjects_WithPaging_RespectsPageSize() {
+        Project activeProject1 = Project.builder()
+                .id(1L)
+                .projectStatus(ProjectStatus.OPEN)
+                .visibilityExpirationDate(LocalDate.now().plusDays(7))
+                .build();
+
+        Project activeProject2 = Project.builder()
+                .id(2L)
+                .projectStatus(ProjectStatus.OPEN)
+                .visibilityExpirationDate(LocalDate.now().plusDays(7))
+                .build();
+
+        Pageable pageRequest = PageRequest.of(0, 1);
+        Page<Project> projectPage = new PageImpl<>(List.of(activeProject1, activeProject2), pageRequest, 2);
+
+        when(projectService.getProjectsByStatuses(
+                eq(List.of(ProjectStatus.OPEN, ProjectStatus.CLOSED)),
+                eq(pageRequest))
+        ).thenReturn(projectPage);
+
+        Page<ProjectPublicDto> results = freelancerWorkflowService.getAllAvailableProjects(pageRequest);
+
+        assertThat(results.getContent()).hasSize(2);
+        assertThat(results.getContent().get(0).getId()).isEqualTo(activeProject1.getId());
+        assertThat(results.getContent().get(1).getId()).isEqualTo(activeProject2.getId());
+        assertThat(results.getTotalElements()).isEqualTo(2);
+
+        verify(projectService).getProjectsByStatuses(
+                eq(List.of(ProjectStatus.OPEN, ProjectStatus.CLOSED)),
+                eq(pageRequest)
+        );
     }
 
     @Test

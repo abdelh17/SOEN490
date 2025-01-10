@@ -16,6 +16,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.util.Arrays;
 import java.util.List;
@@ -27,7 +31,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class ApplicationProcessWorkflowTest {
+class ApplicationProcessWorkflowUnitTest {
 
     @Mock
     private ApplicationService applicationService;
@@ -80,15 +84,76 @@ class ApplicationProcessWorkflowTest {
     @Test
     void selectFreelancer_Success() {
         when(applicationService.getApplicationById(1L)).thenReturn(mockApplication);
-        when(applicationService.getAllApplicationsByProjectId(1L))
-                .thenReturn(Arrays.asList(mockApplication, mockApplication2));
+
+        Pageable firstPageable = PageRequest.of(0, 100);
+        Page<Application> firstPage = new PageImpl<>(
+                Arrays.asList(mockApplication, mockApplication2),
+                firstPageable,
+                2
+        );
+
+        when(applicationService.getAllApplicationsByProjectId(eq(1L), any(Pageable.class)))
+                .thenReturn(firstPage);
 
         applicationProcessWorkflow.selectFreelancer(1L, mockClient);
 
         verify(applicationService).updateApplicationStatus(mockApplication, ApplicationStatus.ACCEPTED);
+        verify(applicationService).updateApplicationStatus(mockApplication2, ApplicationStatus.REJECTED);
+
         verify(projectService).updateProjectStatus(mockProject, ProjectStatus.CLOSED);
         verify(projectService).updateSelectedFreelancer(mockProject, mockFreelancer);
+
+        verify(applicationService).getAllApplicationsByProjectId(eq(1L), eq(PageRequest.of(0, 100)));
+    }
+
+    @Test
+    void selectFreelancer_WithMultiplePages_Success() {
+        when(applicationService.getApplicationById(1L)).thenReturn(mockApplication);
+
+        Application mockApplication3 = Application.builder()
+                .id(3L)
+                .project(mockProject)
+                .freelancer(User.builder().id(4L).build())
+                .applicationStatus(ApplicationStatus.APPLIED)
+                .build();
+
+        Application mockApplication4 = Application.builder()
+                .id(4L)
+                .project(mockProject)
+                .freelancer(User.builder().id(5L).build())
+                .applicationStatus(ApplicationStatus.APPLIED)
+                .build();
+
+        Pageable firstPageable = PageRequest.of(0, 2);
+        Page<Application> firstPage = new PageImpl<>(
+                Arrays.asList(mockApplication, mockApplication2),
+                firstPageable,
+                4
+        );
+
+        Pageable secondPageable = PageRequest.of(1, 2);
+        Page<Application> secondPage = new PageImpl<>(
+                Arrays.asList(mockApplication3, mockApplication4),
+                secondPageable,
+                4
+        );
+
+        when(applicationService.getAllApplicationsByProjectId(eq(1L), any(Pageable.class)))
+                .thenReturn(firstPage)
+                .thenReturn(secondPage);
+
+        applicationProcessWorkflow.selectFreelancer(1L, mockClient);
+
+        verify(applicationService).updateApplicationStatus(mockApplication, ApplicationStatus.ACCEPTED);
+
         verify(applicationService).updateApplicationStatus(mockApplication2, ApplicationStatus.REJECTED);
+        verify(applicationService).updateApplicationStatus(mockApplication3, ApplicationStatus.REJECTED);
+        verify(applicationService).updateApplicationStatus(mockApplication4, ApplicationStatus.REJECTED);
+
+        verify(projectService).updateProjectStatus(mockProject, ProjectStatus.CLOSED);
+        verify(projectService).updateSelectedFreelancer(mockProject, mockFreelancer);
+
+        verify(applicationService).getAllApplicationsByProjectId(eq(1L), eq(PageRequest.of(0, 100)));
     }
 
     @Test

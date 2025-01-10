@@ -1,14 +1,18 @@
 package com.quolance.quolance_api.controllers;
 
+import com.quolance.quolance_api.dtos.PageableRequestDto;
 import com.quolance.quolance_api.dtos.profile.FreelancerProfileDto;
 import com.quolance.quolance_api.dtos.project.ProjectPublicDto;
 import com.quolance.quolance_api.entities.Project;
 import com.quolance.quolance_api.entities.User;
 import com.quolance.quolance_api.services.business_workflow.FreelancerWorkflowService;
 import com.quolance.quolance_api.services.entity_services.ProjectService;
+import com.quolance.quolance_api.util.PaginationUtils;
 import com.quolance.quolance_api.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,15 +30,18 @@ public class PublicController {
     //  In the future, separate this logic to avoid mixing responsibilities in the service.
 
     private final FreelancerWorkflowService freelancerWorkflowService;
+    private final PaginationUtils paginationUtils;
 
     @GetMapping("/projects/all")
     @Operation(
             summary = "View all available projects.",
             description = "View all projects (as a guest) that are open or closed and still in the visibility of the public."
     )
-    public ResponseEntity<List<ProjectPublicDto>> getAllAvailableProjects() {
-        List<ProjectPublicDto> availableProjects = freelancerWorkflowService.getAllAvailableProjects();
-        return ResponseEntity.ok(availableProjects);
+    public ResponseEntity<Page<ProjectPublicDto>> getAllAvailableProjects(@Valid PageableRequestDto pageableRequest) {
+        Page<ProjectPublicDto> availableProjectsPage = freelancerWorkflowService.getAllAvailableProjects(
+                paginationUtils.createPageable(pageableRequest)
+        );
+        return ResponseEntity.ok(availableProjectsPage);
     }
 
     @GetMapping("/projects/{projectId}")
@@ -57,4 +64,3 @@ public class PublicController {
     }
 
 }
-

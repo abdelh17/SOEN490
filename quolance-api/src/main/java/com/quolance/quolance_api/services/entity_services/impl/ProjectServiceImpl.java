@@ -9,6 +9,8 @@ import com.quolance.quolance_api.services.entity_services.ProjectService;
 import com.quolance.quolance_api.util.exceptions.ApiException;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -46,13 +48,8 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public List<Project> getProjectsByStatuses(List<ProjectStatus> projectStatuses) {
-        return projectRepository.findProjectsByProjectStatusIn(projectStatuses);
-    }
-
-    @Override
-    public List<Project> getProjectsByClientId(Long clientId) {
-        return projectRepository.findProjectsByClientId(clientId);
+    public Page<Project> getProjectsByClientId(Long clientId, Pageable pageable) {
+        return projectRepository.findProjectsByClientId(clientId, pageable);
     }
 
     @Override
@@ -194,5 +191,10 @@ public class ProjectServiceImpl implements ProjectService {
         if (updateDto.getExperienceLevel() != null) {
             project.setExperienceLevel(updateDto.getExperienceLevel());
         }
+    }
+
+    @Override
+    public Page<Project> getProjectsByStatuses(List<ProjectStatus> projectStatuses, Pageable pageable) {
+        return projectRepository.findProjectsByProjectStatusIn(projectStatuses, pageable);
     }
 }

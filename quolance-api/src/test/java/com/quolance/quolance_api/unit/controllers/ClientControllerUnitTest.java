@@ -5,12 +5,14 @@ import com.quolance.quolance_api.dtos.application.ApplicationDto;
 import com.quolance.quolance_api.dtos.project.ProjectCreateDto;
 import com.quolance.quolance_api.dtos.project.ProjectDto;
 import com.quolance.quolance_api.dtos.project.ProjectUpdateDto;
+import com.quolance.quolance_api.dtos.PageableRequestDto;
 import com.quolance.quolance_api.entities.User;
 import com.quolance.quolance_api.entities.enums.*;
 import com.quolance.quolance_api.services.business_workflow.ApplicationProcessWorkflow;
 import com.quolance.quolance_api.services.business_workflow.ClientWorkflowService;
 import com.quolance.quolance_api.util.SecurityUtil;
 import com.quolance.quolance_api.util.exceptions.ApiException;
+import com.quolance.quolance_api.util.PaginationUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,6 +23,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import java.time.LocalDate;
 import java.util.Arrays;
@@ -40,6 +46,9 @@ class ClientControllerUnitTest {
 
     @Mock
     private ApplicationProcessWorkflow applicationProcessWorkflow;
+
+    @Mock
+    private PaginationUtils paginationUtils;
 
     @InjectMocks
     private ClientController clientController;
@@ -213,63 +222,208 @@ class ClientControllerUnitTest {
     }
 
     @Test
-    void getAllClientProjects_ReturnsProjectList() {
+    void getAllClientProjects_ReturnsProjectPage() {
         try (MockedStatic<SecurityUtil> securityUtil = mockStatic(SecurityUtil.class)) {
-            securityUtil.when(SecurityUtil::getAuthenticatedUser).thenReturn(mockClient);
-            when(clientWorkflowService.getAllClientProjects(any(User.class)))
-                    .thenReturn(Arrays.asList(projectDto));
+            PageableRequestDto pageableRequest = new PageableRequestDto();
+            pageableRequest.setSize(10);
+            PageRequest pageRequest = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "id"));
+            Page<ProjectDto> projectPage = new PageImpl<>(List.of(projectDto));
 
-            ResponseEntity<List<ProjectDto>> response = clientController.getAllClientProjects();
+            securityUtil.when(SecurityUtil::getAuthenticatedUser).thenReturn(mockClient);
+            when(paginationUtils.createPageable(eq(pageableRequest))).thenReturn(pageRequest);
+            when(clientWorkflowService.getAllClientProjects(eq(mockClient), eq(pageRequest)))
+                    .thenReturn(projectPage);
+
+            ResponseEntity<Page<ProjectDto>> response = clientController.getAllClientProjects(pageableRequest);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(response.getBody()).hasSize(1);
-            assertThat(response.getBody().get(0)).isEqualTo(projectDto);
-            verify(clientWorkflowService).getAllClientProjects(eq(mockClient));
+            assertThat(response.getBody().getContent()).hasSize(1);
+            assertThat(response.getBody().getContent().get(0)).isEqualTo(projectDto);
+            verify(clientWorkflowService).getAllClientProjects(eq(mockClient), eq(pageRequest));
         }
     }
 
     @Test
-    void getAllClientProjects_ReturnsEmptyList() {
+    void getAllClientProjects_ReturnsEmptyPage() {
         try (MockedStatic<SecurityUtil> securityUtil = mockStatic(SecurityUtil.class)) {
-            securityUtil.when(SecurityUtil::getAuthenticatedUser).thenReturn(mockClient);
-            when(clientWorkflowService.getAllClientProjects(any(User.class)))
-                    .thenReturn(List.of());
+            PageableRequestDto pageableRequest = new PageableRequestDto();
+            PageRequest pageRequest = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "id"));
+            Page<ProjectDto> emptyPage = new PageImpl<>(List.of());
 
-            ResponseEntity<List<ProjectDto>> response = clientController.getAllClientProjects();
+            securityUtil.when(SecurityUtil::getAuthenticatedUser).thenReturn(mockClient);
+            when(paginationUtils.createPageable(eq(pageableRequest))).thenReturn(pageRequest);
+            when(clientWorkflowService.getAllClientProjects(eq(mockClient), eq(pageRequest)))
+                    .thenReturn(emptyPage);
+
+            ResponseEntity<Page<ProjectDto>> response = clientController.getAllClientProjects(pageableRequest);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(response.getBody()).isEmpty();
-            verify(clientWorkflowService).getAllClientProjects(eq(mockClient));
+            assertThat(response.getBody().getContent()).isEmpty();
+            verify(clientWorkflowService).getAllClientProjects(eq(mockClient), eq(pageRequest));
         }
     }
 
     @Test
-    void getAllApplicationsToProject_ReturnsApplicationList() {
+    void getAllClientProjects_WithCustomPageNumber_ReturnsCorrectPage() {
         try (MockedStatic<SecurityUtil> securityUtil = mockStatic(SecurityUtil.class)) {
-            securityUtil.when(SecurityUtil::getAuthenticatedUser).thenReturn(mockClient);
-            ApplicationDto applicationDto = new ApplicationDto();
-            when(clientWorkflowService.getAllApplicationsToProject(eq(1L), any(User.class)))
-                    .thenReturn(Arrays.asList(applicationDto));
+            PageableRequestDto pageableRequest = new PageableRequestDto();
+            pageableRequest.setPage(2);
+            pageableRequest.setSize(10);
+            PageRequest expectedPageRequest = PageRequest.of(2, 10, Sort.by(Sort.Direction.DESC, "id"));
+            Page<ProjectDto> projectPage = new PageImpl<>(List.of(projectDto));
 
-            ResponseEntity<List<ApplicationDto>> response = clientController.getAllApplicationsToProject(1L);
+            securityUtil.when(SecurityUtil::getAuthenticatedUser).thenReturn(mockClient);
+            when(paginationUtils.createPageable(eq(pageableRequest))).thenReturn(expectedPageRequest);
+            when(clientWorkflowService.getAllClientProjects(eq(mockClient), eq(expectedPageRequest)))
+                    .thenReturn(projectPage);
+
+            ResponseEntity<Page<ProjectDto>> response = clientController.getAllClientProjects(pageableRequest);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(response.getBody()).hasSize(1);
-            verify(clientWorkflowService).getAllApplicationsToProject(eq(1L), eq(mockClient));
+            assertThat(response.getBody()).isEqualTo(projectPage);
+            verify(paginationUtils).createPageable(argThat(pr ->
+                    pr.getPage() == 2
+            ));
         }
     }
 
     @Test
-    void getAllApplicationsToProject_WhenProjectNotFound_ThrowsApiException() {
+    void getAllClientProjects_WithCustomSortField_ReturnsSortedResults() {
         try (MockedStatic<SecurityUtil> securityUtil = mockStatic(SecurityUtil.class)) {
-            securityUtil.when(SecurityUtil::getAuthenticatedUser).thenReturn(mockClient);
-            when(clientWorkflowService.getAllApplicationsToProject(eq(999L), any(User.class)))
-                    .thenThrow(new ApiException("Project not found"));
+            PageableRequestDto pageableRequest = new PageableRequestDto();
+            pageableRequest.setSortBy("createdDate");
+            PageRequest expectedPageRequest = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "createdDate"));
+            Page<ProjectDto> projectPage = new PageImpl<>(List.of(projectDto));
 
-            assertThatThrownBy(() -> clientController.getAllApplicationsToProject(999L))
+            securityUtil.when(SecurityUtil::getAuthenticatedUser).thenReturn(mockClient);
+            when(paginationUtils.createPageable(eq(pageableRequest))).thenReturn(expectedPageRequest);
+            when(clientWorkflowService.getAllClientProjects(eq(mockClient), eq(expectedPageRequest)))
+                    .thenReturn(projectPage);
+
+            ResponseEntity<Page<ProjectDto>> response = clientController.getAllClientProjects(pageableRequest);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody()).isEqualTo(projectPage);
+            verify(paginationUtils).createPageable(argThat(pr ->
+                    pr.getSortBy().equals("createdDate")
+            ));
+        }
+    }
+
+    @Test
+    void getAllClientProjects_WithInvalidSortDirection_ThrowsApiException() {
+        try (MockedStatic<SecurityUtil> securityUtil = mockStatic(SecurityUtil.class)) {
+            PageableRequestDto pageableRequest = new PageableRequestDto();
+            pageableRequest.setSortDirection("invalid");
+
+            securityUtil.when(SecurityUtil::getAuthenticatedUser).thenReturn(mockClient);
+            when(paginationUtils.createPageable(eq(pageableRequest)))
+                    .thenThrow(new ApiException("Sort direction must be either 'asc' or 'desc'"));
+
+            assertThatThrownBy(() -> clientController.getAllClientProjects(pageableRequest))
                     .isInstanceOf(ApiException.class)
-                    .hasMessage("Project not found");
-            verify(clientWorkflowService).getAllApplicationsToProject(eq(999L), eq(mockClient));
+                    .hasMessage("Sort direction must be either 'asc' or 'desc'");
+        }
+    }
+
+    @Test
+    void getAllApplicationsToProject_ReturnsApplicationPage() {
+        try (MockedStatic<SecurityUtil> securityUtil = mockStatic(SecurityUtil.class)) {
+            PageableRequestDto pageableRequest = new PageableRequestDto();
+            PageRequest pageRequest = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "id"));
+            ApplicationDto applicationDto = new ApplicationDto();
+            Page<ApplicationDto> applicationPage = new PageImpl<>(List.of(applicationDto));
+
+            securityUtil.when(SecurityUtil::getAuthenticatedUser).thenReturn(mockClient);
+            when(paginationUtils.createPageable(eq(pageableRequest))).thenReturn(pageRequest);
+            when(clientWorkflowService.getAllApplicationsToProject(eq(1L), eq(mockClient), eq(pageRequest)))
+                    .thenReturn(applicationPage);
+
+            ResponseEntity<Page<ApplicationDto>> response = clientController.getAllApplicationsToProject(1L, pageableRequest);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody().getContent()).hasSize(1);
+            verify(clientWorkflowService).getAllApplicationsToProject(eq(1L), eq(mockClient), eq(pageRequest));
+        }
+    }
+
+    @Test
+    void getAllApplicationsToProject_WhenInvalidPageSize_ThrowsApiException() {
+        try (MockedStatic<SecurityUtil> securityUtil = mockStatic(SecurityUtil.class)) {
+            PageableRequestDto pageableRequest = new PageableRequestDto();
+            pageableRequest.setSize(101);
+
+            securityUtil.when(SecurityUtil::getAuthenticatedUser).thenReturn(mockClient);
+            when(paginationUtils.createPageable(eq(pageableRequest)))
+                    .thenThrow(new ApiException("Page size must not be greater than 100"));
+
+            assertThatThrownBy(() -> clientController.getAllApplicationsToProject(1L, pageableRequest))
+                    .isInstanceOf(ApiException.class)
+                    .hasMessage("Page size must not be greater than 100");
+        }
+    }
+
+    @Test
+    void getAllApplicationsToProject_WithCustomPageSize_ReturnsCorrectPageSize() {
+        try (MockedStatic<SecurityUtil> securityUtil = mockStatic(SecurityUtil.class)) {
+            PageableRequestDto pageableRequest = new PageableRequestDto();
+            pageableRequest.setSize(5);
+            PageRequest expectedPageRequest = PageRequest.of(0, 5, Sort.by(Sort.Direction.DESC, "id"));
+            ApplicationDto applicationDto = new ApplicationDto();
+            Page<ApplicationDto> applicationPage = new PageImpl<>(List.of(applicationDto));
+
+            securityUtil.when(SecurityUtil::getAuthenticatedUser).thenReturn(mockClient);
+            when(paginationUtils.createPageable(eq(pageableRequest))).thenReturn(expectedPageRequest);
+            when(clientWorkflowService.getAllApplicationsToProject(eq(1L), eq(mockClient), eq(expectedPageRequest)))
+                    .thenReturn(applicationPage);
+
+            ResponseEntity<Page<ApplicationDto>> response = clientController.getAllApplicationsToProject(1L, pageableRequest);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody()).isEqualTo(applicationPage);
+            verify(paginationUtils).createPageable(argThat(pr ->
+                    pr.getSize() == 5
+            ));
+        }
+    }
+
+    @Test
+    void getAllApplicationsToProject_WithAscendingSortOrder_ReturnsSortedResults() {
+        try (MockedStatic<SecurityUtil> securityUtil = mockStatic(SecurityUtil.class)) {
+            PageableRequestDto pageableRequest = new PageableRequestDto();
+            pageableRequest.setSortDirection("asc");
+            PageRequest expectedPageRequest = PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "id"));
+            ApplicationDto applicationDto = new ApplicationDto();
+            Page<ApplicationDto> applicationPage = new PageImpl<>(List.of(applicationDto));
+
+            securityUtil.when(SecurityUtil::getAuthenticatedUser).thenReturn(mockClient);
+            when(paginationUtils.createPageable(eq(pageableRequest))).thenReturn(expectedPageRequest);
+            when(clientWorkflowService.getAllApplicationsToProject(eq(1L), eq(mockClient), eq(expectedPageRequest)))
+                    .thenReturn(applicationPage);
+
+            ResponseEntity<Page<ApplicationDto>> response = clientController.getAllApplicationsToProject(1L, pageableRequest);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody()).isEqualTo(applicationPage);
+            verify(paginationUtils).createPageable(argThat(pr ->
+                    pr.getSortDirection().equals("asc")
+            ));
+        }
+    }
+
+    @Test
+    void getAllApplicationsToProject_WithNegativePageNumber_ThrowsApiException() {
+        try (MockedStatic<SecurityUtil> securityUtil = mockStatic(SecurityUtil.class)) {
+            PageableRequestDto pageableRequest = new PageableRequestDto();
+            pageableRequest.setPage(-1);
+
+            securityUtil.when(SecurityUtil::getAuthenticatedUser).thenReturn(mockClient);
+            when(paginationUtils.createPageable(eq(pageableRequest)))
+                    .thenThrow(new ApiException("Page number cannot be negative"));
+
+            assertThatThrownBy(() -> clientController.getAllApplicationsToProject(1L, pageableRequest))
+                    .isInstanceOf(ApiException.class)
+                    .hasMessage("Page number cannot be negative");
         }
     }
 

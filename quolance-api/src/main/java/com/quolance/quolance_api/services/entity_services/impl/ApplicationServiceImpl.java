@@ -8,6 +8,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -49,13 +51,13 @@ public class ApplicationServiceImpl implements ApplicationService {
     }
 
     @Override
-    public List<Application> getAllApplicationsByFreelancerId(Long freelancerId) {
-        return applicationRepository.findApplicationsByFreelancerId(freelancerId);
+    public Page<Application> getAllApplicationsByFreelancerId(Long freelancerId, Pageable pageable) {
+        return applicationRepository.findApplicationsByFreelancerId(freelancerId, pageable);
     }
 
     @Override
-    public List<Application> getAllApplicationsByProjectId(Long projectId) {
-        return applicationRepository.findApplicationsByProjectId(projectId);
+    public Page<Application> getAllApplicationsByProjectId(Long projectId, Pageable pageable) {
+        return applicationRepository.findApplicationsByProjectId(projectId, pageable);
     }
 
     @Override

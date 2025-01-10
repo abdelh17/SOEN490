@@ -12,6 +12,9 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import java.util.Arrays;
 import java.util.List;
@@ -22,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class ApplicationServiceTest {
+class ApplicationServiceUnitTest {
 
     @Mock
     private ApplicationRepository applicationRepository;
@@ -102,24 +105,109 @@ class ApplicationServiceTest {
 
     @Test
     void getAllApplicationsByFreelancerId_Success() {
-        List<Application> applications = Arrays.asList(mockApplication);
-        when(applicationRepository.findApplicationsByFreelancerId(1L)).thenReturn(applications);
+        List<Application> applications = List.of(mockApplication);
+        Page<Application> expectedPage = new PageImpl<>(applications);
 
-        List<Application> result = applicationService.getAllApplicationsByFreelancerId(1L);
+        when(applicationRepository.findApplicationsByFreelancerId(eq(1L), any(Pageable.class)))
+                .thenReturn(expectedPage);
 
-        assertThat(result).hasSize(1);
-        assertThat(result).containsExactly(mockApplication);
+        Page<Application> result = applicationService.getAllApplicationsByFreelancerId(1L, Pageable.unpaged());
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent()).containsExactly(mockApplication);
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        verify(applicationRepository).findApplicationsByFreelancerId(eq(1L), any(Pageable.class));
+    }
+
+    @Test
+    void getAllApplicationsByFreelancerId_WithPaging_Success() {
+        Application mockApplication2 = Application.builder()
+                .id(2L)
+                .applicationStatus(ApplicationStatus.APPLIED)
+                .build();
+
+        List<Application> applications = Arrays.asList(mockApplication, mockApplication2);
+        Pageable pageRequest = org.springframework.data.domain.PageRequest.of(0, 1);
+        Page<Application> expectedPage = new PageImpl<>(List.of(mockApplication), pageRequest, 2);
+
+        when(applicationRepository.findApplicationsByFreelancerId(eq(1L), eq(pageRequest)))
+                .thenReturn(expectedPage);
+
+        Page<Application> result = applicationService.getAllApplicationsByFreelancerId(1L, pageRequest);
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0)).isEqualTo(mockApplication);
+        assertThat(result.getTotalElements()).isEqualTo(2);
+        assertThat(result.getTotalPages()).isEqualTo(2);
+        assertThat(result.hasNext()).isTrue();
+        verify(applicationRepository).findApplicationsByFreelancerId(eq(1L), eq(pageRequest));
     }
 
     @Test
     void getAllApplicationsByProjectId_Success() {
-        List<Application> applications = Arrays.asList(mockApplication);
-        when(applicationRepository.findApplicationsByProjectId(1L)).thenReturn(applications);
+        List<Application> applications = List.of(mockApplication);
+        Page<Application> expectedPage = new PageImpl<>(applications);
 
-        List<Application> result = applicationService.getAllApplicationsByProjectId(1L);
+        when(applicationRepository.findApplicationsByProjectId(eq(1L), any(Pageable.class)))
+                .thenReturn(expectedPage);
 
-        assertThat(result).hasSize(1);
-        assertThat(result).containsExactly(mockApplication);
+        Page<Application> result = applicationService.getAllApplicationsByProjectId(1L, Pageable.unpaged());
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent()).containsExactly(mockApplication);
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        verify(applicationRepository).findApplicationsByProjectId(eq(1L), any(Pageable.class));
+    }
+
+    @Test
+    void getAllApplicationsByProjectId_WithPaging_Success() {
+        Application mockApplication2 = Application.builder()
+                .id(2L)
+                .applicationStatus(ApplicationStatus.APPLIED)
+                .build();
+
+        Application mockApplication3 = Application.builder()
+                .id(3L)
+                .applicationStatus(ApplicationStatus.APPLIED)
+                .build();
+
+        List<Application> allApplications = Arrays.asList(mockApplication, mockApplication2, mockApplication3);
+
+        Pageable firstPageRequest = org.springframework.data.domain.PageRequest.of(0, 2);
+        Page<Application> firstPage = new PageImpl<>(
+                allApplications.subList(0, 2),
+                firstPageRequest,
+                allApplications.size()
+        );
+
+        when(applicationRepository.findApplicationsByProjectId(eq(1L), eq(firstPageRequest)))
+                .thenReturn(firstPage);
+
+        Page<Application> result = applicationService.getAllApplicationsByProjectId(1L, firstPageRequest);
+
+        assertThat(result.getContent()).hasSize(2);
+        assertThat(result.getTotalElements()).isEqualTo(3);
+        assertThat(result.getTotalPages()).isEqualTo(2);
+        assertThat(result.hasNext()).isTrue();
+        verify(applicationRepository).findApplicationsByProjectId(eq(1L), eq(firstPageRequest));
+
+        Pageable secondPageRequest = org.springframework.data.domain.PageRequest.of(1, 2);
+        Page<Application> secondPage = new PageImpl<>(
+                allApplications.subList(2, 3),
+                secondPageRequest,
+                allApplications.size()
+        );
+
+        when(applicationRepository.findApplicationsByProjectId(eq(1L), eq(secondPageRequest)))
+                .thenReturn(secondPage);
+
+        result = applicationService.getAllApplicationsByProjectId(1L, secondPageRequest);
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getTotalElements()).isEqualTo(3);
+        assertThat(result.getTotalPages()).isEqualTo(2);
+        assertThat(result.hasNext()).isFalse();
+        verify(applicationRepository).findApplicationsByProjectId(eq(1L), eq(secondPageRequest));
     }
 
     @Test

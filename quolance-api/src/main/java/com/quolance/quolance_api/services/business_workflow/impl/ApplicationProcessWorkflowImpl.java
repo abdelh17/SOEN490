@@ -15,6 +15,9 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.util.*;
 
@@ -30,7 +33,6 @@ public class ApplicationProcessWorkflowImpl implements ApplicationProcessWorkflo
     @Transactional
     public void selectFreelancer(Long applicationId, User client) {
         try {
-            // Fetch the application
             Application application = applicationService.getApplicationById(applicationId);
             Project project = application.getProject();
 
@@ -42,12 +44,20 @@ public class ApplicationProcessWorkflowImpl implements ApplicationProcessWorkflo
             projectService.updateProjectStatus(project, ProjectStatus.CLOSED);
             projectService.updateSelectedFreelancer(project, application.getFreelancer());
 
-            // Reject all other applications
-            applicationService.getAllApplicationsByProjectId(project.getId()).forEach(app -> {
-                if(!app.getId().equals(applicationId)){
-                    applicationService.updateApplicationStatus(app, ApplicationStatus.REJECTED);
-                }
-            });
+            // Reject all other applications using pagination
+            int pageSize = 100;
+            Pageable pageable = PageRequest.of(0, pageSize);
+            Page<Application> page;
+
+            do {
+                page = applicationService.getAllApplicationsByProjectId(project.getId(), pageable);
+                page.getContent().forEach(app -> {
+                    if(!app.getId().equals(applicationId)){
+                        applicationService.updateApplicationStatus(app, ApplicationStatus.REJECTED);
+                    }
+                });
+                pageable = page.nextPageable();
+            } while(page.hasNext());
 
         } catch (OptimisticLockException e) {
             handleOptimisticLockException(e);

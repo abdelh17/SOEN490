@@ -447,17 +447,28 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "http://localhost:8081/api/client/projects/all",
+							"raw": "http://localhost:8081/api/client/projects/all?page=0&size=10&sortBy=id&sortDirection=desc",
 							"protocol": "http",
-							"host": [
-								"localhost"
-							],
+							"host": ["localhost"],
 							"port": "8081",
-							"path": [
-								"api",
-								"client",
-								"projects",
-								"all"
+							"path": ["api", "client", "projects", "all"],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "10"
+								},
+								{
+									"key": "sortBy",
+									"value": "id"
+								},
+								{
+									"key": "sortDirection",
+									"value": "desc"
+								}
 							]
 						}
 					},
@@ -569,19 +580,28 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "http://localhost:8081/api/client/projects/1/applications/all",
+							"raw": "http://localhost:8081/api/client/projects/1/applications/all?page=0&size=10&sortBy=id&sortDirection=desc",
 							"protocol": "http",
-							"host": [
-								"localhost"
-							],
+							"host": ["localhost"],
 							"port": "8081",
-							"path": [
-								"api",
-								"client",
-								"projects",
-								"1",
-								"applications",
-								"all"
+							"path": ["api", "client", "projects", "1", "applications", "all"],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "10"
+								},
+								{
+									"key": "sortBy",
+									"value": "id"
+								},
+								{
+									"key": "sortDirection",
+									"value": "desc"
+								}
 							]
 						}
 					},
@@ -628,17 +648,28 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "http://localhost:8081/api/freelancer/applications/all",
+							"raw": "http://localhost:8081/api/freelancer/applications/all?page=0&size=10&sortBy=id&sortDirection=desc",
 							"protocol": "http",
-							"host": [
-								"localhost"
-							],
+							"host": ["localhost"],
 							"port": "8081",
-							"path": [
-								"api",
-								"freelancer",
-								"applications",
-								"all"
+							"path": ["api", "freelancer", "applications", "all"],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "10"
+								},
+								{
+									"key": "sortBy",
+									"value": "id"
+								},
+								{
+									"key": "sortDirection",
+									"value": "desc"
+								}
 							]
 						}
 					},
@@ -650,17 +681,28 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "http://localhost:8081/api/freelancer/projects/all",
+							"raw": "http://localhost:8081/api/freelancer/projects/all?page=0&size=10&sortBy=id&sortDirection=desc",
 							"protocol": "http",
-							"host": [
-								"localhost"
-							],
+							"host": ["localhost"],
 							"port": "8081",
-							"path": [
-								"api",
-								"freelancer",
-								"projects",
-								"all"
+							"path": ["api", "freelancer", "projects", "all"],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "10"
+								},
+								{
+									"key": "sortBy",
+									"value": "id"
+								},
+								{
+									"key": "sortDirection",
+									"value": "desc"
+								}
 							]
 						}
 					},
@@ -862,18 +904,28 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "http://localhost:8081/api/admin/projects/pending/all",
+							"raw": "http://localhost:8081/api/admin/projects/pending/all?page=0&size=10&sortBy=id&sortDirection=desc",
 							"protocol": "http",
-							"host": [
-								"localhost"
-							],
+							"host": ["localhost"],
 							"port": "8081",
-							"path": [
-								"api",
-								"admin",
-								"projects",
-								"pending",
-								"all"
+							"path": ["api", "admin", "projects", "pending", "all"],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "10"
+								},
+								{
+									"key": "sortBy",
+									"value": "id"
+								},
+								{
+									"key": "sortDirection",
+									"value": "desc"
+								}
 							]
 						}
 					},
@@ -945,17 +997,28 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "http://localhost:8081/api/public/projects/all",
+							"raw": "http://localhost:8081/api/public/projects/all?page=0&size=10&sortBy=id&sortDirection=desc",
 							"protocol": "http",
-							"host": [
-								"localhost"
-							],
+							"host": ["localhost"],
 							"port": "8081",
-							"path": [
-								"api",
-								"public",
-								"projects",
-								"all"
+							"path": ["api", "public", "projects", "all"],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "10"
+								},
+								{
+									"key": "sortBy",
+									"value": "id"
+								},
+								{
+									"key": "sortDirection",
+									"value": "desc"
+								}
 							]
 						}
 					},
@@ -1285,15 +1348,28 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "localhost:8081/api/files/all",
-							"host": [
-								"localhost"
-							],
+							"raw": "http://localhost:8081/api/files/all?page=0&size=10&sortBy=id&sortDirection=desc",
+							"protocol": "http",
+							"host": ["localhost"],
 							"port": "8081",
-							"path": [
-								"api",
-								"files",
-								"all"
+							"path": ["api", "files", "all"],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "10"
+								},
+								{
+									"key": "sortBy",
+									"value": "id"
+								},
+								{
+									"key": "sortDirection",
+									"value": "desc"
+								}
 							]
 						}
 					},

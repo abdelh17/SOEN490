@@ -22,8 +22,12 @@ import jakarta.persistence.OptimisticLockException;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.ILoggerFactory;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -97,27 +101,34 @@ public class FreelancerWorkflowServiceImpl implements FreelancerWorkflowService 
     }
 
     @Override
-    public List<ApplicationDto> getAllFreelancerApplications(User freelancer) {
-        return applicationService.getAllApplicationsByFreelancerId(freelancer.getId()).stream()
-                .map(ApplicationDto::fromEntity)
-                .toList();
+    public Page<ApplicationDto> getAllFreelancerApplications(User freelancer, Pageable pageable) {
+        Page<Application> applicationPage = applicationService.getAllApplicationsByFreelancerId(freelancer.getId(), pageable);
+        return applicationPage.map(ApplicationDto::fromEntity);
     }
 
+    //Alternatively, properly paginate this endpoint
     @Override
-    public List<ProjectPublicDto> getAllAvailableProjects() {
+    public Page<ProjectPublicDto> getAllAvailableProjects(Pageable pageable) {
         LocalDate currentDate = LocalDate.now();
 
-        // Get all projects that are OPEN or CLOSED
-        List<Project> openAndClosedProjects = projectService.getProjectsByStatuses(List.of(ProjectStatus.OPEN, ProjectStatus.CLOSED));
+        Page<Project> openAndClosedProjects = projectService.getProjectsByStatuses(
+                List.of(ProjectStatus.OPEN, ProjectStatus.CLOSED),
+                pageable
+        );
 
-        // removed the project that are both status CLOSED and visibilityExpirationDate is before currentDate
-        openAndClosedProjects.removeIf(project ->
-                project.getProjectStatus().equals(ProjectStatus.CLOSED) &&
-                        project.getVisibilityExpirationDate().isBefore(currentDate));
-
-        return openAndClosedProjects.stream()
+        List<ProjectPublicDto> filteredProjects = openAndClosedProjects.getContent().stream()
+                .filter(project -> !(
+                        project.getProjectStatus().equals(ProjectStatus.CLOSED) &&
+                                project.getVisibilityExpirationDate().isBefore(currentDate)
+                ))
                 .map(ProjectPublicDto::fromEntity)
                 .toList();
+
+        return new PageImpl<>(
+                filteredProjects,
+                pageable,
+                openAndClosedProjects.getTotalElements()
+        );
     }
 
     @Override

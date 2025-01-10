@@ -219,22 +219,25 @@ public class FreelancerControllerIntegrationTest extends AbstractTestcontainers 
         Application application1 = applicationRepository.save(EntityCreationHelper.createApplication(project1, freelancer));
         Application application2 = applicationRepository.save(EntityCreationHelper.createApplication(project2, freelancer));
 
-
         //Act
         String response = mockMvc.perform(get("/api/freelancer/applications/all")
+                        .param("page", "0")
+                        .param("size", "10")
+                        .param("sortDirection", "asc")
                         .session(session))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
 
-        List<Object> responseList = objectMapper.readValue(response, List.class);
+        Map<String, Object> responseMap = objectMapper.readValue(response, Map.class);
+        List<Map<String, Object>> content = (List<Map<String, Object>>) responseMap.get("content");
 
         //Assert
-        assertThat(responseList).hasSize(2);
+        assertThat(content).hasSize(2);
 
-        Map<String, Object> applicationResponse1 = (Map<String, Object>) responseList.get(0);
-        Map<String, Object> applicationResponse2 = (Map<String, Object>) responseList.get(1);
+        Map<String, Object> applicationResponse1 = content.get(0);
+        Map<String, Object> applicationResponse2 = content.get(1);
 
         assertThat(applicationResponse1.get("id")).isEqualTo(application1.getId().intValue());
         assertThat(applicationResponse1.get("status")).isEqualTo("APPLIED");
@@ -247,6 +250,12 @@ public class FreelancerControllerIntegrationTest extends AbstractTestcontainers 
         assertThat(applicationResponse2.get("status")).isEqualTo(application2.getApplicationStatus().name());
         assertThat(applicationResponse2.get("projectId")).isEqualTo(project2.getId().intValue());
         assertThat(applicationResponse2.get("freelancerId")).isEqualTo(freelancer.getId().intValue());
+
+        // Verify pagination information
+        assertThat(responseMap.get("totalElements")).isEqualTo(2);
+        assertThat(responseMap.get("totalPages")).isEqualTo(1);
+        assertThat(responseMap.get("number")).isEqualTo(0);
+        assertThat(responseMap.get("size")).isEqualTo(10);
     }
 
     @Test
@@ -265,20 +274,24 @@ public class FreelancerControllerIntegrationTest extends AbstractTestcontainers 
 
         //Act
         String response = mockMvc.perform(get("/api/freelancer/projects/all")
+                        .param("page", "0")
+                        .param("size", "10")
+                        .param("sortDirection", "asc")
                         .session(session))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
 
-        List<Object> responseList = objectMapper.readValue(response, List.class);
+        Map<String, Object> responseMap = objectMapper.readValue(response, Map.class);
+        List<Map<String,Object>> content = (List<Map<String, Object>>) responseMap.get("content");
 
         //Assert
-        assertThat(responseList).hasSize(3);
+        assertThat(content).hasSize(3);
 
-        Map<String, Object> projectResponse1 = (Map<String, Object>) responseList.get(0);
-        Map<String, Object> projectResponse2 = (Map<String, Object>) responseList.get(1);
-        Map<String, Object> projectResponse3 = (Map<String, Object>) responseList.get(2);
+        Map<String, Object> projectResponse1 = (Map<String, Object>) content.get(0);
+        Map<String, Object> projectResponse2 = (Map<String, Object>) content.get(1);
+        Map<String, Object> projectResponse3 = (Map<String, Object>) content.get(2);
 
         assertThat(projectResponse1.get("id")).isEqualTo(project1.getId().intValue());
         assertThat(projectResponse1.get("projectStatus")).isEqualTo("OPEN");

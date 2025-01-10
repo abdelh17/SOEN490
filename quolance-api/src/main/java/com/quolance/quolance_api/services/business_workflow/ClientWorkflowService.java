@@ -6,6 +6,9 @@ import com.quolance.quolance_api.dtos.project.ProjectCreateDto;
 import com.quolance.quolance_api.dtos.project.ProjectDto;
 import com.quolance.quolance_api.dtos.project.ProjectUpdateDto;
 import com.quolance.quolance_api.entities.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -15,9 +18,9 @@ public interface ClientWorkflowService {
     ProjectDto getProject(Long projectId, User client);
     void deleteProject(Long projectId, User client);
 
-    List<ProjectDto> getAllClientProjects(User client);
+    Page<ProjectDto> getAllClientProjects(User client, Pageable pageable);
 
-    List<ApplicationDto> getAllApplicationsToProject(Long projectId, User client);
+    Page<ApplicationDto> getAllApplicationsToProject(Long projectId, User client, Pageable pageable);
 
     ProjectDto updateProject(Long projectId, ProjectUpdateDto projectUpdateDto, User client);
 }
