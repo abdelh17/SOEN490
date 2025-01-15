@@ -1,4 +1,4 @@
-package com.quolance.quolance_api.unit;
+package com.quolance.quolance_api.unit.controllers;
 
 import com.quolance.quolance_api.controllers.EnumController;
 import com.quolance.quolance_api.entities.enums.*;

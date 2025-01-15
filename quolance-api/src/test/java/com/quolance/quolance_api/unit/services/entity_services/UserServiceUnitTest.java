@@ -1,4 +1,4 @@
-package com.quolance.quolance_api.services.entity_services.impl;
+package com.quolance.quolance_api.unit.services.entity_services;
 
 import com.quolance.quolance_api.dtos.*;
 import com.quolance.quolance_api.entities.PasswordResetToken;
@@ -10,16 +10,17 @@ import com.quolance.quolance_api.jobs.SendWelcomeEmailJob;
 import com.quolance.quolance_api.repositories.PasswordResetTokenRepository;
 import com.quolance.quolance_api.repositories.UserRepository;
 import com.quolance.quolance_api.repositories.VerificationCodeRepository;
+import com.quolance.quolance_api.util.ApplicationContextProvider;
 import com.quolance.quolance_api.util.exceptions.ApiException;
+import com.quolance.quolance_api.services.entity_services.impl.UserServiceImpl;
 import org.jobrunr.scheduling.BackgroundJobRequest;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
+import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationContext;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
@@ -49,6 +50,9 @@ class UserServiceTest {
 
     @InjectMocks
     private UserServiceImpl userService;
+
+    private MockedStatic<ApplicationContextProvider> applicationContextProviderMock;
+    private MockedStatic<BackgroundJobRequest> backgroundJobRequestMock;
 
     @Captor
     private ArgumentCaptor<User> userCaptor;
@@ -83,6 +87,13 @@ class UserServiceTest {
 
     @BeforeEach
     void setUp() {
+        applicationContextProviderMock = mockStatic(ApplicationContextProvider.class);
+        ApplicationContext mockContext = mock(ApplicationContext.class);
+        when(ApplicationContextProvider.getApplicationContext()).thenReturn(mockContext);
+
+        backgroundJobRequestMock = mockStatic(BackgroundJobRequest.class);
+        backgroundJobRequestMock.when(() -> BackgroundJobRequest.enqueue(any())).thenReturn(null);
+
         mockUser = createMockUser();
 
         mockVerificationCode = new VerificationCode(mockUser);
@@ -125,6 +136,16 @@ class UserServiceTest {
         updatePendingUserRequest.setRole(Role.FREELANCER.name());
     }
 
+    @AfterEach
+    void tearDown() {
+        if (applicationContextProviderMock != null) {
+            applicationContextProviderMock.close();
+        }
+        if (backgroundJobRequestMock != null) {
+            backgroundJobRequestMock.close();
+        }
+    }
+
     @Test
     void create_Success() {
         when(userRepository.existsByEmail(anyString())).thenReturn(false);
@@ -138,6 +159,7 @@ class UserServiceTest {
         assertThat(savedUser.getLastName()).isEqualTo(createUserRequest.getLastName());
         assertThat(savedUser.getRole()).isEqualTo(Role.valueOf(createUserRequest.getRole()));
         verify(verificationCodeRepository).save(any(VerificationCode.class));
+        verify(backgroundJobRequestMock).when(() -> BackgroundJobRequest.enqueue(any(SendWelcomeEmailJob.class)));
     }
 
     @Test
@@ -193,6 +215,7 @@ class UserServiceTest {
         userService.forgotPassword("test@test.com");
 
         verify(passwordResetTokenRepository).save(any(PasswordResetToken.class));
+        verify(backgroundJobRequestMock).when(() -> BackgroundJobRequest.enqueue(any(SendResetPasswordEmailJob.class)));
     }
 
     @Test

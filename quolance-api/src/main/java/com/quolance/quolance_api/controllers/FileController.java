@@ -9,8 +9,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -39,11 +42,18 @@ public class FileController {
     @GetMapping("/all")
     @Operation(
             summary = "Get All User Files",
-            description = "Returns all files uploaded by the authenticated user."
+            description = "Returns all files uploaded by the authenticated user with pagination support."
     )
-    public ResponseEntity<List<FileDto>> getAllUserFiles(){
+    public ResponseEntity<Page<FileDto>> getAllUserFiles(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction
+    ){
         User user = SecurityUtil.getAuthenticatedUser();
-        List<FileDto> files = fileService.getAllFileUploadsByUser(user);
+        Sort.Direction sortDirection = Sort.Direction.fromString(direction.toUpperCase());
+        PageRequest pageRequest = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
+        Page<FileDto> files = fileService.getAllFileUploadsByUser(user, pageRequest);
         return ResponseEntity.ok(files);
     }
 }

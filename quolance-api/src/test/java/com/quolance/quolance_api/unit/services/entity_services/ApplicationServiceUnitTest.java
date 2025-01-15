@@ -1,9 +1,10 @@
-package com.quolance.quolance_api.services.entity_services.impl;
+package com.quolance.quolance_api.unit.services.entity_services;
 
 import com.quolance.quolance_api.entities.Application;
 import com.quolance.quolance_api.entities.enums.ApplicationStatus;
 import com.quolance.quolance_api.repositories.ApplicationRepository;
 import com.quolance.quolance_api.util.exceptions.ApiException;
+import com.quolance.quolance_api.services.entity_services.impl.ApplicationServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

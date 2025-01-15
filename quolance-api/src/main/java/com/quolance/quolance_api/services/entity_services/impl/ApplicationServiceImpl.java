@@ -1,4 +1,5 @@
 package com.quolance.quolance_api.services.entity_services.impl;
+
 import com.quolance.quolance_api.entities.Application;
 import com.quolance.quolance_api.entities.enums.ApplicationStatus;
 import com.quolance.quolance_api.repositories.ApplicationRepository;
